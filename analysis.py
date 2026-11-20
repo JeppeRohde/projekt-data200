@@ -50,7 +50,7 @@ for col in trust_cols:
 for col in data_cols:
     df[col] = df[col].map(willing_map)
 
-# Calculating and printing how many that is not able to index if "not sure" was said
+# Calculating and printing how many that is not able to index if "not sure" was said. This is not weighted when using pandas in mean be default
 print("Answers not on the 1 to 5 scale:", df[trust_cols + data_cols].isna().sum().sum())
 
 # Calculating and printing how many put down an answer where the said e.g. strongly agree to all of them
@@ -200,6 +200,7 @@ print()
 # H3:  People trust AI less for a diagnosis without a doctor than for general health info
 #
 # All tests are one-sided with alpha = 0.05, because each hypothesis has a direction
+#############################################################################################################
 
 
 # 5. HYPOTHESIS TESTS
@@ -245,6 +246,47 @@ test_paired("trust_general", "trust_diag_alone", "H3: trust, general health info
 print("Mean trust for each step (1 to 5)")
 print(df[trust_cols].mean().round(2))
 print()
+
+# Plot for H1: mean trust score for each group, with and without the straight-lined respondents
+no_straight = df[~df["straight_lined"]]
+h1_plot = pd.DataFrame({
+    "All respondents": df.groupby("asked_health")["trust_score"].mean(),
+    "Without straight-liners": no_straight.groupby("asked_health")["trust_score"].mean(),
+}).loc[["Yes", "No"]].T
+h1_plot.columns = ["Asked AI a health question", "Never asked"]
+
+ax = h1_plot.plot(kind="bar", color=["#4c9a6a", "#c9c9c9"], figsize=(7, 5))
+ax.set_ylabel("Mean trust score (1 to 5)")
+ax.set_title("H1: trust score, asked AI a health question vs not")
+ax.set_ylim(1, 5)
+for bars in ax.containers:
+    ax.bar_label(bars, fmt="%.2f")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.savefig("4_h1.png")
+plt.close()
+
+# Plot for H2 and H3: the two means in each paired test
+pairs = {
+    "H2a: anonymized\nvs not anonymized": ("data_anon", "data_not_anon"),
+    "H2b: hospital/university\nvs tech company": ("data_hospital", "data_tech"),
+    "H3: general health info\nvs diagnosis alone": ("trust_general", "trust_diag_alone"),
+}
+paired_plot = pd.DataFrame(
+    {label: [df[a].mean(), df[b].mean()] for label, (a, b) in pairs.items()},
+    index=["Expected higher", "Expected lower"],
+).T
+
+ax = paired_plot.plot(kind="bar", color=["#4c9a6a", "#c0504d"], figsize=(7, 5))
+ax.set_ylabel("Mean answer (1 to 5)")
+ax.set_title("H2 and H3: paired t-tests")
+ax.set_ylim(1, 5)
+for bars in ax.containers:
+    ax.bar_label(bars, fmt="%.2f")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.savefig("5_h2_h3.png")
+plt.close()
 
 
 # 6. SAVE CLEANED DATASET
